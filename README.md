@@ -1,21 +1,21 @@
 # VSCode Telemetry Extension
 
-A Visual Studio Code extension that implements custom telemetry tracking by sending events to a configurable HTTP endpoint for monitoring and analysis.
+A Visual Studio Code extension that implements telemetry tracking using VSCode's native TelemetryLogger API with a custom HTTP sender for monitoring and analysis.
 
 ## Overview
 
-This extension demonstrates a lightweight telemetry solution that:
-- Sends telemetry events to a custom HTTP API endpoint
-- Implements the VSCode TelemetrySender interface for standardized tracking
+This extension demonstrates a telemetry solution that:
+- Uses VSCode's native TelemetryLogger API for standardized telemetry
+- Implements a custom TelemetrySender to send events to an HTTP API endpoint
 - Includes a local Express server for testing and development
-- Provides simple event and error tracking capabilities
+- Provides structured event tracking with common properties
 
 ## Features
 
-- **Custom Telemetry Reporter**: Implements VSCode's TelemetrySender interface for event and error tracking
-- **HTTP API Integration**: Sends telemetry data to any HTTP endpoint via POST requests
+- **Native TelemetryLogger**: Uses VSCode's built-in TelemetryLogger API for standardized telemetry
+- **Custom HTTP Sender**: Implements TelemetrySender interface to send data to HTTP endpoints
+- **Common Properties**: Support for adding extension-wide metadata like version numbers
 - **Test Server Included**: Express-based test server to capture and display telemetry locally
-- **Event & Error Tracking**: Separate methods for tracking events and errors with structured data
 - **Development-Friendly**: Simple architecture that's easy to understand and extend
 
 ## Installation
@@ -57,23 +57,38 @@ The extension provides a command accessible via the Command Palette (`Cmd+Shift+
 
 ### Configuration
 
-To change the telemetry endpoint:
+To change the telemetry endpoint or common properties:
 
 1. Open [src/extension.ts](src/extension.ts)
 2. Update the API endpoint in the TelemetryReporter constructor:
    ```typescript
-   const reporter = new TelemetryReporter('http://your-api.com/telemetry');
+   const sender = new TelemetryReporter('http://your-api.com/telemetry');
+   ```
+3. Modify common properties in the TelemetryLogger creation:
+   ```typescript
+   telemetryLogger = vscode.env.createTelemetryLogger(sender, {
+     additionalCommonProperties: {
+       'extensionVersion': '0.1.1'
+     }
+   });
    ```
 
 The default endpoint is `http://localhost:3000/telemetry` for local testing.
 
 ## Architecture
 
-### Custom Telemetry Reporter
+### Telemetry Implementation
 
-The extension implements a custom telemetry solution with two main components:
+The extension uses VSCode's native TelemetryLogger API with a custom HTTP sender:
 
-#### 1. TelemetryReporter Class ([src/telemetry-reporter.ts](src/telemetry-reporter.ts))
+#### 1. Native TelemetryLogger ([src/extension.ts](src/extension.ts))
+
+Uses `vscode.env.createTelemetryLogger()` with:
+- Custom TelemetrySender implementation for HTTP transport
+- Additional common properties (e.g., extension version)
+- Standardized logging methods (`logUsage`, `logError`)
+
+#### 2. TelemetryReporter Class ([src/telemetry-reporter.ts](src/telemetry-reporter.ts))
 
 Implements VSCode's `TelemetrySender` interface with three methods:
 - `sendEventData(eventName, data)` - Sends event telemetry
@@ -82,7 +97,7 @@ Implements VSCode's `TelemetrySender` interface with three methods:
 
 All telemetry is sent via HTTP POST to the configured API endpoint.
 
-#### 2. Test Server ([test-server.js](test-server.js))
+#### 3. Test Server ([test-server.js](test-server.js))
 
 A simple Express server that:
 - Listens on port 3000
@@ -121,7 +136,9 @@ A simple Express server that:
 
 The extension currently tracks:
 - `initial.extension.activate` - Fired when the extension activates
+- `initial.extension.activate.error` - Fired when activation fails
 - `initial.extension.cmd.helloWorld` - Fired when the Hello World command is executed
+- `initial.extension.cmd.helloWorld.error` - Fired when the command fails
 
 ## Development
 
@@ -160,21 +177,24 @@ vscode-telemetry/
 
 ### Adding New Telemetry Events
 
-To track events in your extension:
+To track events in your extension using the TelemetryLogger:
 
 ```typescript
-// Track an event
-reporter.sendEventData('your.event.name', {
+// Track a usage event
+telemetryLogger?.logUsage('your.event.name', {
   'property1': 'value1',
   'property2': 'value2'
 });
 
-// Track an error
+// Track an error event
 try {
   // Your code
 } catch (error) {
   const err = error instanceof Error ? error : new Error(String(error));
-  reporter.sendErrorData(err, { context: 'additionalInfo' });
+  telemetryLogger?.logUsage('your.event.name.error', {
+    'message': err.message,
+    'stack': err.stack ?? ''
+  });
 }
 ```
 
@@ -216,6 +236,13 @@ try {
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Release Notes
+
+### 0.1.1
+
+- Integrated VSCode's native TelemetryLogger API
+- Added support for common properties (extension version)
+- Updated to use standardized `logUsage` method
+- Improved error tracking with structured error events
 
 ### 0.0.1
 
