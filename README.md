@@ -1,21 +1,22 @@
 # VSCode Telemetry Extension
 
-A Visual Studio Code extension that implements dual telemetry tracking - sending events to Application Insights while simultaneously logging to a local JSON file for debugging and analysis.
+A Visual Studio Code extension that implements custom telemetry tracking by sending events to a configurable HTTP endpoint for monitoring and analysis.
 
 ## Overview
 
-This extension demonstrates a comprehensive telemetry solution that:
-- Sends telemetry events to Azure Application Insights for production monitoring
-- Logs all telemetry data to a local JSON file (`.telemetry/telemetry.json`) for development and debugging
-- Provides commands to interact with and view telemetry data
+This extension demonstrates a lightweight telemetry solution that:
+- Sends telemetry events to a custom HTTP API endpoint
+- Implements the VSCode TelemetrySender interface for standardized tracking
+- Includes a local Express server for testing and development
+- Provides simple event and error tracking capabilities
 
 ## Features
 
-- **Dual Telemetry Logging**: Simultaneously sends events to Application Insights and writes to local JSON file
-- **Local Telemetry Viewer**: Built-in command to view the local telemetry log file
-- **Structured Event Data**: All events include timestamps, event names, properties, and measurements
-- **Development-Friendly**: Local `.telemetry/` folder makes debugging easy during development
-- **Production-Ready**: Integration with Azure Application Insights for production monitoring
+- **Custom Telemetry Reporter**: Implements VSCode's TelemetrySender interface for event and error tracking
+- **HTTP API Integration**: Sends telemetry data to any HTTP endpoint via POST requests
+- **Test Server Included**: Express-based test server to capture and display telemetry locally
+- **Event & Error Tracking**: Separate methods for tracking events and errors with structured data
+- **Development-Friendly**: Simple architecture that's easy to understand and extend
 
 ## Installation
 
@@ -38,69 +39,89 @@ Install from the VSCode marketplace (once published) or install the `.vsix` pack
 
 ## Usage
 
+### Starting the Test Server
+
+Before testing the extension, start the included Express test server:
+
+```bash
+node test-server.js
+```
+
+This starts a server on `http://localhost:3000` that captures and displays telemetry events in the console.
+
 ### Commands
 
-The extension provides two commands accessible via the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
+The extension provides a command accessible via the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
 
 - **Hello World** - Demo command that sends a telemetry event
-- **View Telemetry** - Opens the local telemetry JSON file in the editor
 
 ### Configuration
 
-To enable remote telemetry to Application Insights:
+To change the telemetry endpoint:
 
 1. Open [src/extension.ts](src/extension.ts)
-2. Set the `connectionString` variable to your Application Insights connection string:
+2. Update the API endpoint in the TelemetryReporter constructor:
    ```typescript
-   const connectionString = 'InstrumentationKey=your-key-here;...';
+   const reporter = new TelemetryReporter('http://your-api.com/telemetry');
    ```
 
-Without a connection string, the extension will still log all events locally to `.telemetry/telemetry.json`.
+The default endpoint is `http://localhost:3000/telemetry` for local testing.
 
 ## Architecture
 
-### Dual-Logging System
+### Custom Telemetry Reporter
 
-The extension implements a dual-logging approach in [src/extension.ts](src/extension.ts):
+The extension implements a custom telemetry solution with two main components:
 
-1. **Remote Telemetry**: Uses `TelemetryReporter` from `@vscode/extension-telemetry` to send events to Application Insights
-2. **Local Logging**: Simultaneously writes telemetry events to a JSON file
+#### 1. TelemetryReporter Class ([src/telemetry-reporter.ts](src/telemetry-reporter.ts))
 
-The `sendTelemetryWithLog()` helper function handles both operations atomically.
+Implements VSCode's `TelemetrySender` interface with three methods:
+- `sendEventData(eventName, data)` - Sends event telemetry
+- `sendErrorData(error, data)` - Sends error telemetry
+- `flush()` - Optional flush method for batching
 
-### Event Structure
+All telemetry is sent via HTTP POST to the configured API endpoint.
 
-All telemetry events include:
-- `timestamp` (ISO 8601 format)
-- `eventName` (string identifier)
-- `properties` (key-value pairs of string data)
-- `measurements` (key-value pairs of numeric data)
+#### 2. Test Server ([test-server.js](test-server.js))
 
-Example event:
+A simple Express server that:
+- Listens on port 3000
+- Receives POST requests at `/telemetry`
+- Logs all received telemetry to the console
+- Returns success responses to the extension
+
+### Telemetry Payload Structure
+
+**Event Data:**
 ```json
 {
-  "timestamp": "2025-10-30T10:30:45.123Z",
-  "eventName": "helloWorldCommand",
-  "properties": {
-    "triggerSource": "commandPalette"
+  "type": "event",
+  "eventName": "initial.extension.activate",
+  "data": {
+    "Extension": "Activated"
   },
-  "measurements": {}
+  "timeStamp": "Mon Nov 04 2025"
 }
 ```
 
-### Storage Location
-
-Telemetry data is stored in `.telemetry/telemetry.json` at the extension's root directory. This location:
-- Makes telemetry data easily accessible during development
-- Is excluded from git via `.gitignore`
-- Provides a convenient location for debugging and local analysis
+**Error Data:**
+```json
+{
+  "type": "Error",
+  "error": {
+    "message": "Error message",
+    "stack": "..."
+  },
+  "data": {},
+  "timeStamp": "Mon Nov 04 2025"
+}
+```
 
 ### Tracked Events
 
 The extension currently tracks:
-- `extensionActivated` - Fired when the extension activates
-- `helloWorldCommand` - Fired when the Hello World command is executed
-- `ViewTelemetryCommand` - Fired when the View Telemetry command is executed
+- `initial.extension.activate` - Fired when the extension activates
+- `initial.extension.cmd.helloWorld` - Fired when the Hello World command is executed
 
 ## Development
 
@@ -127,33 +148,47 @@ npm run vscode:prepublish
 
 ```
 vscode-telemetry/
-├── .telemetry/           # Local telemetry logs (gitignored)
-│   └── telemetry.json    # JSON file with all telemetry events
 ├── src/
-│   ├── extension.ts      # Main extension code with telemetry implementation
-│   └── test/             # Test files
-├── out/                  # Compiled JavaScript output
-├── package.json          # Extension manifest and dependencies
-└── tsconfig.json         # TypeScript configuration
+│   ├── extension.ts           # Main extension activation and commands
+│   ├── telemetry-reporter.ts  # Custom TelemetryReporter implementation
+│   └── test/                  # Test files
+├── test-server.js             # Express server for testing telemetry
+├── out/                       # Compiled JavaScript output
+├── package.json               # Extension manifest and dependencies
+└── tsconfig.json              # TypeScript configuration
 ```
 
 ### Adding New Telemetry Events
 
-To add telemetry tracking to new features:
+To track events in your extension:
 
 ```typescript
-sendTelemetryWithLog('yourEventName',
-  { 'property1': 'value1', 'property2': 'value2' },
-  { 'measurement1': 123, 'measurement2': 456 }
-);
+// Track an event
+reporter.sendEventData('your.event.name', {
+  'property1': 'value1',
+  'property2': 'value2'
+});
+
+// Track an error
+try {
+  // Your code
+} catch (error) {
+  const err = error instanceof Error ? error : new Error(String(error));
+  reporter.sendErrorData(err, { context: 'additionalInfo' });
+}
 ```
 
 ## Dependencies
 
-- **[@vscode/extension-telemetry](https://www.npmjs.com/package/@vscode/extension-telemetry)** (^1.1.0) - Official VSCode telemetry library
+### Runtime Dependencies
+- **[express](https://www.npmjs.com/package/express)** (^5.1.0) - Web framework for the test server
+- **[body-parser](https://www.npmjs.com/package/body-parser)** (^2.2.0) - Request body parsing middleware
+
+### Development Dependencies
 - **TypeScript** (^5.9.3) - Language and compiler
 - **ESLint** (^9.36.0) - Code linting
 - **Mocha** - Testing framework
+- **[@types/vscode](https://www.npmjs.com/package/@types/vscode)** - VSCode API type definitions
 
 ## Requirements
 
@@ -163,9 +198,10 @@ sendTelemetryWithLog('yourEventName',
 
 ## Known Issues
 
-- Connection string is hardcoded in source - consider moving to configuration settings for production use
-- No error handling for JSON file write failures
-- Telemetry file can grow unbounded - consider implementing rotation or size limits
+- API endpoint is hardcoded in source - consider moving to configuration settings
+- Network errors are logged to console but not surfaced to the user
+- No retry mechanism for failed telemetry sends
+- Test server logs to console only - no persistent storage
 
 ## Contributing
 
@@ -184,10 +220,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### 0.0.1
 
 - Initial release
-- Dual telemetry logging (Application Insights + local JSON)
+- Custom TelemetryReporter implementing VSCode's TelemetrySender interface
+- HTTP POST-based telemetry to configurable endpoint
+- Express test server for local telemetry capture
+- Event and error tracking with structured data
 - Hello World demo command with telemetry
-- View Telemetry command to inspect local logs
-- Local storage in `.telemetry/` folder
 
 ---
 
