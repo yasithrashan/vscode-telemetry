@@ -1,8 +1,5 @@
 import * as vscode from 'vscode';
 import { TelemetryReporter } from '@vscode/extension-telemetry';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 const connectionString = '';
 let reporter: TelemetryReporter;
