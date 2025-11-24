@@ -1,25 +1,22 @@
 import * as vscode from 'vscode';
 import { TelemetryReporter } from '@vscode/extension-telemetry';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 const connectionString = '';
 
 let reporter: TelemetryReporter;
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('[Extension] is now active!');
-	reporter = new TelemetryReporter(connectionString);
-	context.subscriptions.push(reporter);
-	// Send telemetry event
-	reporter.sendTelemetryEvent('extensionActivated', { 'extensionId': context.extension.id }, { 'extensionVersion': context.extension.packageJSON.version });
 
-	const disposable = vscode.commands.registerCommand('vscode-telemetry.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World from vscode-telemetry!');
-		// Send telemetry event
-		reporter.sendTelemetryEvent('helloWorldCommand', { 'commandId': 'vscode-telemetry.helloWorld' });
-	});
+    reporter = new TelemetryReporter(connectionString);
+    context.subscriptions.push(reporter);
 
-	context.subscriptions.push(disposable);
-}
+    const disposable = vscode.commands.registerCommand('extension.helloWorld', async () => {
+        vscode.window.showInformationMessage('Hello World!');
+        reporter.sendTelemetryEvent('helloWorldCommand', { 'source': 'command' }, { 'executionTime': Date.now() });
+    });
 
-export function deactivate() {
+    context.subscriptions.push(disposable);
 }

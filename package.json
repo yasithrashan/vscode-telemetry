@@ -1,7 +1,9 @@
 {
   "name": "vscode-telemetry",
   "displayName": "vscode-telemetry",
-  "description": "",
+  "description": "vscode-extension-telemetry",
+  "publisher": "yasith-rashan",
+
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.105.0"
@@ -14,7 +16,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "vscode-telemetry.helloWorld",
+        "command": "extension.helloWorld",
         "title": "Hello World"
       },
       {
@@ -45,7 +47,6 @@
   "dependencies": {
     "@vscode/extension-telemetry": "^1.2.0",
     "body-parser": "^2.2.0",
-    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "vscode-extension-telemetry": "^0.4.5"
   }
