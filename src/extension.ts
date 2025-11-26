@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { TelemetryReporter } from '@vscode/extension-telemetry';
+import { TelemetryEventEmitter } from './event-emitter';
 
-const connectionString = '';
+const connectionString = 'e8a19758-77cc-433f-b9fd-416bdce00bf3';
 let reporter: TelemetryReporter;
 
 export function createTelemetryReporter(context: vscode.ExtensionContext): TelemetryReporter {
@@ -26,25 +27,35 @@ export function sendTelemetryEvent(
 }
 
 export function activate(context: vscode.ExtensionContext) {
-
     reporter = createTelemetryReporter(context);
+
+    // Listern for fired telemetry events
+    TelemetryEventEmitter.instance.onDidFire((payload) => {
+        sendTelemetryEvent(
+            reporter,
+            payload.eventName,
+            payload.componentName,
+            payload.customDimensions ?? {},
+            payload.measurements ?? {}
+        );
+    });
 
     const disposable = vscode.commands.registerCommand('extension.helloWorld', async () => {
         vscode.window.showInformationMessage('Hello World!');
-        sendTelemetryEvent(
-            reporter,
-            'helloWorldCommand',
-            'commandPalette',
-            {
-                'source': 'command',
-                'userId': '123456',
-                'userName': 'yasithrashan',
+
+        TelemetryEventEmitter.instance.fire({
+            eventName: 'helloWorldCommand',
+            componentName: 'commandPalette',
+            customDimensions: {
+                source: 'command',
+                userId: '123456',
+                userName: 'yasithrashan'
             },
-            {
-                'performance.executionTime': Date.now(),
-                'performance.memoryUsed': process.memoryUsage().heapUsed
+            measurements: {
+                executionTime: Date.now(),
+                memoryUsed: process.memoryUsage().heapUsed
             }
-        );
+        });
     });
 
     context.subscriptions.push(disposable);
